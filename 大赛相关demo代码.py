@@ -1,4 +1,3 @@
-import logging
 import os
 import time
 
@@ -63,10 +62,6 @@ if __name__ == "__main__":
         H = np.load(csi_file)  # 后续可以直接load数据文件
 
         tStart = time.perf_counter()
-
-        logging.info("开始计算ADP距离")
-        distances = calADP.calculate_adp_distances_parallel(H, tol_samp_num)
-        logging.info("ADP距离计算完毕，共计算了 {} 对点之间的距离。".format(len(distances)))
 
         # 计算并输出定位位置
         print('Calculating localization results')
