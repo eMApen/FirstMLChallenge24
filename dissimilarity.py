@@ -36,12 +36,14 @@ def calculate_cs_dissimilarity_matrix(channel, max_workers=5):
     logging.info("开始计算CS距离")
 
     # 将数据传输到GPU
-    channel = torch.tensor(channel)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print("使用" + str(device) + "进行计算")
+    channel = torch.tensor(channel, device=device)
     samp_num = channel.shape[0]
     port_num = channel.shape[1]
     sc_num = channel.shape[3]
 
-    output = torch.zeros((samp_num, samp_num), dtype=torch.float32)
+    output = torch.zeros((samp_num, samp_num), dtype=torch.float32, device=device)
     powers = torch.real(torch.einsum("lbmt,lbmt->lbt", channel, torch.conj(channel)))
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -50,7 +52,7 @@ def calculate_cs_dissimilarity_matrix(channel, max_workers=5):
 
         for future in tqdm(concurrent.futures.as_completed(futures), total=samp_num, desc="计算CS距离", leave=True):
             i, dCS_i_up = future.result()
-            dCS_i = torch.cat([torch.zeros(i), dCS_i_up], 0)
+            dCS_i = torch.cat([torch.zeros(i, device=device), dCS_i_up], 0)
             del dCS_i_up
             output[i] = dCS_i
 
@@ -69,6 +71,7 @@ def calculate_cs_dissimilarity_matrix(channel, max_workers=5):
     dCS_np = dCS_matrix.cpu().numpy()
 
     return dCS_np
+
 
 
 if __name__ == '__main__':

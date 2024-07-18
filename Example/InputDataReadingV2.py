@@ -2,8 +2,8 @@ import itertools
 
 import numpy as np
 
-cfg_path = 'Test/Round0CfgData1.txt'
-inputdata_path = 'Test/Round0InputData1.txt'
+cfg_path = '../Test/Round0CfgData1.txt'
+inputdata_path = '../Test/Round0InputData1.txt'
 
 
 # 切片读取函数
