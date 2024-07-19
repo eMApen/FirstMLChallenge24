@@ -1,7 +1,6 @@
 import concurrent.futures
 import logging
 
-import numpy as np
 import torch
 from tqdm import tqdm
 
@@ -9,7 +8,7 @@ from tqdm import tqdm
 logging.basicConfig(filename='cs_dissimilarity.log', level=logging.INFO)
 
 
-def calculate_cs_distance(i, channel, powers, port_num, sc_num):
+def calculate_cs_distance(i, channel, powers):
     """
     计算第 i 行的CS距离
     """
@@ -21,7 +20,7 @@ def calculate_cs_distance(i, channel, powers, port_num, sc_num):
     denominator = powers[i] * powers[i:]
     dCS_i_ele = 1 - torch.div(numerator, denominator)
     del numerator, denominator  # 释放中间结果内存
-    dCS_i_up = torch.maximum(torch.sum(dCS_i_ele, dim=(-2, -1)) / (port_num * sc_num),
+    dCS_i_up = torch.maximum(torch.sum(dCS_i_ele, dim=(-2, -1)),
                              torch.zeros_like(dCS_i_ele[:, 0, 0]))
 
     del dCS_i_ele  # 释放中间结果内存
@@ -44,10 +43,10 @@ def calculate_cs_dissimilarity_matrix(channel, max_workers=5):
     sc_num = channel.shape[3]
 
     output = torch.zeros((samp_num, samp_num), dtype=torch.float32, device=device)
-    powers = torch.real(torch.einsum("lbmt,lbmt->lbt", channel, torch.conj(channel)))
+    powers = torch.real(torch.einsum("lbmt,lbmt->lbt", torch.conj(channel), channel))
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(calculate_cs_distance, i, channel, powers, port_num, sc_num): i for i in
+        futures = {executor.submit(calculate_cs_distance, i, channel, powers): i for i in
                    range(samp_num)}
 
         for future in tqdm(concurrent.futures.as_completed(futures), total=samp_num, desc="计算CS距离", leave=True):
@@ -72,28 +71,3 @@ def calculate_cs_dissimilarity_matrix(channel, max_workers=5):
 
     return dCS_np
 
-
-
-if __name__ == '__main__':
-    # 配置信息
-    ant_num = 64
-    port_num = 2
-    bs_pos = [0.0, 0.0, 30.0]
-    sc_num = 408
-    anch_samp_num = 20
-    tol_samp_num = 200
-
-    # 锚点位置文件
-    anch_pos = np.random.randn(anch_samp_num, 3)  # 示例数据
-
-    # 信道文件
-    H = np.random.randn(tol_samp_num, port_num, ant_num, sc_num) + 1j * np.random.randn(tol_samp_num, port_num, ant_num,
-                                                                                        sc_num)  # 示例数据
-
-    # 初始化日志记录
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    logger = logging.getLogger()
-
-    logging.info("开始计算CS距离")
-    distances = calculate_cs_dissimilarity_matrix(H)
-    logging.info("CS距离计算完毕，共计算了 {} 对点之间的距离。".format(len(distances)))

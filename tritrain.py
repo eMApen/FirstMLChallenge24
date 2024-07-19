@@ -43,13 +43,17 @@ class EmbedNet(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, kernel_size=(3, 3), padding=1)
         self.fc1 = nn.Linear(64 * 64 * 408, 128)
         self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 32)  # 新增的中间层
+        self.fc4 = nn.Linear(128, 2)
 
     def forward(self, x):
         x = torch.relu(self.conv1(x))
         x = torch.relu(self.conv2(x))
         x = x.view(x.size(0), -1)
         x = torch.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = torch.relu(self.fc2(x))
+        x = torch.relu(self.fc3(x))  # 新增的中间层
+        x = self.fc4(x)  # 输出层
         return x
 
 
@@ -65,7 +69,6 @@ class TripletNet(nn.Module):
         negative_out = self.embed_net(negative)
         return anchor_out, positive_out, negative_out
 
-    # 将嵌入表示转换为坐标
     def embed_to_coords(self, embeds):
         max_distance = np.linalg.norm(anch_pos.max(axis=0) - anch_pos.min(axis=0))
         normalized_embeds = embeds / embeds.norm(dim=1, keepdim=True)
@@ -101,13 +104,16 @@ class TripletDataset(Dataset):
             torch.tensor(self.H[k], dtype=torch.float32)
 
 
-def train_triplet_network(triple_net, criterion, optimizer, H_combined, d_net, device, init_q=0.3, num_triplets=20000,
-                          num_epochs=20):
+def train_triplet_network(triple_net, criterion, optimizer, scheduler, H_combined, d_net, init_q=0.3,
+                          num_triplets=20000, num_epochs=20, init_batch_size=32):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("使用" + str(device) + "进行计算")
     q = init_q
+    batch_size = init_batch_size
     for epoch in range(num_epochs):
         triplets = select_triplets(d_net, q, num_triplets)
         triplet_dataset = TripletDataset(H_combined, triplets)
-        triplet_loader = DataLoader(triplet_dataset, batch_size=32, shuffle=True)
+        triplet_loader = DataLoader(triplet_dataset, batch_size=batch_size, shuffle=True)
 
         running_loss = 0.0
         triplet_loader_tqdm = tqdm(triplet_loader, desc=f"Epoch {epoch + 1}/{num_epochs}", leave=False)
@@ -129,9 +135,13 @@ def train_triplet_network(triple_net, criterion, optimizer, H_combined, d_net, d
                     f'Epoch [{epoch + 1}/{num_epochs}], Batch [{i + 1}], Q: {q :.4f}, Loss: {running_loss / 100:.4f}')
                 running_loss = 0.0
 
-        print(f'Epoch [{epoch + 1}/{num_epochs}] Completed')
-        q = max(0.02, q - (init_q - 0.02) / num_epochs)  # 每个 epoch 结束后减小 q 值
+        scheduler.step()  # 每个 epoch 结束后更新学习率
+        print(f'Epoch [{epoch + 1}/{num_epochs}] Completed, Learning Rate: {scheduler.get_last_lr()[0]:.6f}')
+        q = max(0.01, q - (init_q - 0.02) / num_epochs)  # 每个 epoch 结束后减小 q 值
 
+        # 动态调整批量大小
+        batch_size = min(128, batch_size + 8)  # 增加批量大小，但不超过128
+        del triplets
 
 if __name__ == '__main__':
     print("<<< Welcome to 2024 Wireless Algorithm Contest! >>>\n")
@@ -154,9 +164,10 @@ if __name__ == '__main__':
     H_combined = H_combined.reshape(tol_samp_num, 4, ant_num, sc_num)
 
     optimizer = optim.Adam(embed_net.parameters(), lr=0.001)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)  # 每5个epoch将学习率减半
 
     # 训练网络
-    train_triplet_network(embed_net, criterion, optimizer, H_combined, d_geo, device)
+    train_triplet_network(embed_net, criterion, optimizer, scheduler, H_combined, d_geo)
 
     # 保存网络实例
     torch_net_file = tensor_file_name_converter(1, 1)

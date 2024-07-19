@@ -16,18 +16,21 @@ except ImportError:
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
 def construct_knn_graph(D_pw, k):
     """构建 k-近邻图的邻接矩阵"""
+    # 将对角线元素置为0
+    np.fill_diagonal(D_pw, 0)
     n = D_pw.shape[0]
     knn_graph = np.zeros_like(D_pw)
     for i in range(n):
-        knn_idx = np.argsort(D_pw[i])[:k + 1]  # 包括自身，所以取前 k+1 个
+        # 排除自身，即对 D_pw[i] 的元素进行排序后取前 k 个，但不包括自身
+        knn_idx = np.argsort(D_pw[i])
+        knn_idx = knn_idx[knn_idx != i][:k]
         for j in knn_idx:
             knn_graph[i, j] = D_pw[i, j]
             knn_graph[j, i] = D_pw[j, i]  # 无向图
     logging.info(
-        f'构建的 k-近邻图，这里对k进行排序，把最小的k个邻接矩阵搬到图里：\n{knn_graph[:10, :10]}')  # 打印前 10 行 10 列用于检查
+        f'构建的 k-近邻图，这里对k进行排序，把最小的k个邻接矩阵搬到图里，并将对角线置为0：\n{knn_graph[:10, :10]}')  # 打印前 10 行 10 列用于检查
     return knn_graph
 
 

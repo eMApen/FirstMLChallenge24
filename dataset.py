@@ -134,7 +134,6 @@ def read_all_of_huaweicup(Ridx, Fileidx):
         # 保存 CSI 为 npy
         np.save(csi_file_npy, H)
         print('Channel CSI saved: ' + csi_file_npy)
-    del H  # 释放中间结果内存
 
     # 文件路径和文件名设置
     geo_file = PathRaw + '/' + Prefix + 'GEO' + Didx + '.npy'
