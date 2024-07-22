@@ -66,14 +66,14 @@ def compute_shortest_paths_dijkstra_cugraph(knn_graph):
     G.from_cudf_edgelist(df, source='src', destination='dst', edge_attr='weight', renumber=True)
 
     num_nodes = knn_graph.shape[0]
-    shortest_paths = np.zeros((num_nodes, num_nodes))
+    shortest_paths = np.full((num_nodes, num_nodes), np.inf)  # 初始化为无穷大
 
     logging.info(f'开始计算最短路径...')
     for i in tqdm(range(num_nodes), desc="计算最短路径节点数", leave=True):
         lengths = cugraph.shortest_path(G, i)
-        lengths = lengths[lengths['vertex'] != i]  # 排除自身
-        for j, length in zip(lengths['vertex'].to_numpy(), lengths['distance'].to_numpy()):
-            shortest_paths[i, j] = length
+        for j in range(num_nodes):
+            if j in lengths['vertex'].to_numpy():
+                shortest_paths[i, j] = lengths[lengths['vertex'] == j]['distance'].values[0]
 
     logging.info(f'计算完成，最短路径矩阵的前 10 行 10 列：\n{shortest_paths[:10, :10]}')
     return shortest_paths

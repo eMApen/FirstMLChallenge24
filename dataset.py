@@ -136,6 +136,17 @@ def read_all_of_huaweicup(Ridx, Fileidx):
         print('Channel CSI saved: ' + csi_file_npy)
 
     # 文件路径和文件名设置
+    cs_file = PathRaw + '/' + Prefix + 'DCS' + Didx + '.npy'
+    if os.path.isfile(cs_file):
+        # 如果文件存在，则加载数据
+        d_cs = np.load(cs_file)
+        print("Loading DCS data succeed")
+    else:
+        d_cs = None
+        print("Channel DCS data not exist")
+
+
+    # 文件路径和文件名设置
     geo_file = PathRaw + '/' + Prefix + 'GEO' + Didx + '.npy'
     if os.path.isfile(geo_file):
         # 如果文件存在，则加载数据
@@ -145,4 +156,4 @@ def read_all_of_huaweicup(Ridx, Fileidx):
         d_geo = None
         print("Channel GEO data not exist")
 
-    return bs_pos, tol_samp_num, anch_samp_num, port_num, ant_num, sc_num, anch_pos, H, d_geo
+    return bs_pos, tol_samp_num, anch_samp_num, port_num, ant_num, sc_num, anch_pos, H, d_cs, d_geo

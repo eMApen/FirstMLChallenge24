@@ -1,4 +1,3 @@
-import cvxpy as cp
 import numpy as np
 import torch
 
@@ -13,7 +12,7 @@ def map_embeddings(embed_net, H_combined, device):
     return np.vstack(embeddings)
 
 
-def map_embeddings_to_coords(embeddings, anch_pos):
+def map_embeddings_to_coords(embeddings, anch_pos, device):
     """
     将嵌入向量映射到绝对坐标，并添加边界条件。
 
@@ -25,10 +24,10 @@ def map_embeddings_to_coords(embeddings, anch_pos):
     numpy.ndarray: 映射后的绝对坐标 (N, 2)。
     """
     # 从 anch_pos 中提取已知的嵌入向量和绝对坐标
-    print("Start mapping embeddings to coords through CVX toolbox")
+    print("Start mapping embeddings to coords through PyTorch")
     indices = anch_pos[:, 0].astype(int)
-    known_embeds = embeddings[indices]
-    known_coords = anch_pos[:, 1:]
+    known_embeds = torch.tensor(embeddings[indices], dtype=torch.float32, device=device)
+    known_coords = torch.tensor(anch_pos[:, 1:], dtype=torch.float32, device=device)
 
     print("Known indices:", indices[:5])
     print("Known embeddings (first 5):", known_embeds[:5])
@@ -39,28 +38,28 @@ def map_embeddings_to_coords(embeddings, anch_pos):
     coords_dim = known_coords.shape[1]
 
     # 定义优化变量
-    A = cp.Variable((embedding_dim, coords_dim))  # 线性变换矩阵
-    b = cp.Variable((1, coords_dim))  # 平移向量
+    A = torch.randn((embedding_dim, coords_dim), requires_grad=True, device=device)  # 线性变换矩阵
+    b = torch.randn((1, coords_dim), requires_grad=True, device=device)  # 平移向量
 
-    # 定义目标函数：最小化变换后的嵌入向量与绝对坐标之间的误差
-    objective = cp.Minimize(cp.sum_squares(known_embeds @ A + b - known_coords))
+    # 定义优化器
+    optimizer = torch.optim.Adam([A, b], lr=0.01)
 
-    # 初步定义无约束优化问题
-    problem = cp.Problem(objective)
+    # 优化迭代
+    num_iterations = 20000
+    for _ in range(num_iterations):
+        optimizer.zero_grad()
+        loss = torch.sum((known_embeds @ A + b - known_coords) ** 2)
+        loss.backward()
+        optimizer.step()
+        if _ % 2000 == 0:
+            print(f"Iteration {_}: Loss = {loss.item()}")
 
-    # 求解无约束优化问题
-    problem.solve()
-    print("Initial problem status:", problem.status)
-    if problem.status not in ["optimal", "optimal_inaccurate"]:
-        print("Initial optimization did not converge to an optimal solution.")
-        return None
+    # 获取优化结果
+    A_opt = A.detach().cpu().numpy()
+    b_opt = b.detach().cpu().numpy()
 
-    # 获取初步优化结果
-    A_opt = A.value
-    b_opt = b.value
-
-    print("Initial Optimal A:", A_opt)
-    print("Initial Optimal b:", b_opt)
+    print("Optimal A:", A_opt)
+    print("Optimal b:", b_opt)
 
     # 将嵌入向量转换为绝对坐标
     mapped_coords = embeddings @ A_opt + b_opt
@@ -92,3 +91,4 @@ def save_coords_to_txt(xy_list, filename):
     with open(filename, 'w') as f:
         for coord in xy_list:
             f.write(f"{coord[0]} {coord[1]}\n")
+

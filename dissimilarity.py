@@ -8,7 +8,7 @@ from tqdm import tqdm
 logging.basicConfig(filename='cs_dissimilarity.log', level=logging.INFO)
 
 
-def calculate_cs_distance(i, channel, powers):
+def calculate_cs_distance(i, channel, powers, port_num=2, sc_num=408):
     """
     计算第 i 行的CS距离
     """
