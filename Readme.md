@@ -29,9 +29,11 @@ article [DOI: 10.1109/TCOMM.2022.3205152](https://ieeexplore.ieee.org/abstract/d
 The CS dissimilarity matrix is calculated based on the provided channel data. The dissimilarity between two points is
 defined as:
 
-\[ d_{\mathrm{CS}, i, j}=\sum_{b=1}^B \sum_{n=1} ^{N_{sub}}\left(1-\frac{\left|\sum_{m=1}^M\left(\tilde{\mathbf{H}}_{b,
+$$
+d_{\mathrm{CS}, i, j}=\sum_{b=1}^B \sum_{n=1} ^{N_{sub}}\left(1-\frac{\left|\sum_{m=1}^M\left(\tilde{\mathbf{H}}_{b,
 m, n}^{(i)}\right)^* \tilde{\mathbf{H}}_{b, m, n}^{(j)}\right|^2}{\left(\sum_{m=1}^M\left|\tilde{\mathbf{H}}_{b, m,
-n}^{(i)}\right|^2\right)\left(\sum_{m=1}^M\left|\tilde{\mathbf{H}}_{b, m, n}^{(j)}\right|^2\right)}\right) \]
+n}^{(i)}\right|^2\right)\left(\sum_{m=1}^M\left|\tilde{\mathbf{H}}_{b, m, n}^{(j)}\right|^2\right)}\right)
+$$
 
 This formula is adapted from the method described in the referenced IEEE TCOM article.
 
